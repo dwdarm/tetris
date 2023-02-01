@@ -102,9 +102,16 @@ class Stack {
         }
         
         int update() {
-            int res = _cutStack();
-            _joinStack();
-            
+            int res = 0;
+
+            if (mCutStackIndex.size() == 0) {
+                res = _cutStack();
+            }
+
+            if (mJoinStack) {
+                _joinStack();
+            }
+
             return res;
         }
         
@@ -117,12 +124,39 @@ class Stack {
             SDL_RenderClear(renderer);
             
             for (int y = 0; y < STACK_HEIGHT; y++) {
+                bool cutX = true;
                 for (int x = 0; x < STACK_WIDTH; x++) {
-                    if ((mStack[y][x] - 1) >= 0) {
+                    
+                    if (mStack[y][x] > 0) {
+
                         SDL_Rect clip = { (mStack[y][x] - 1) * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE };
                         SDL_Rect quad = { (x * BLOCK_SIZE), (y * BLOCK_SIZE), BLOCK_SIZE, BLOCK_SIZE };
-                        SDL_RenderCopy(renderer, mTexture.getTexture(), &clip, &quad);
+
+                        if ((mCutStackIndex.size() > 0) && cutX) {
+                            int offset = 0;
+                            for (int cutY : mCutStackIndex) {
+                                offset++;
+
+                                if (cutY != y) {
+                                    SDL_RenderCopy(renderer, mTexture.getTexture(), &clip, &quad);
+                                } else {
+                                    mStack[y][x] = -1;
+                                    cutX = false;
+
+                                    if ((x == (STACK_WIDTH - 1)) && (offset == mCutStackIndex.size())) {
+                                        mCutStackIndex.clear();
+                                        mJoinStack = true;
+                                    }
+                                }
+
+                            }
+
+                        } else {
+                            SDL_RenderCopy(renderer, mTexture.getTexture(), &clip, &quad);
+                        }
+
                     }
+
                 }
             }
             
@@ -136,10 +170,11 @@ class Stack {
     
         int _cutStack() {
             int total = 0;
+
             for (int y = 0; y < STACK_HEIGHT; y++) {
                 bool cut = true;
                 for (int x = 0; x < STACK_WIDTH; x++) {
-                    if (mStack[y][x] == 0) {
+                    if (mStack[y][x] <= 0) {
                         cut = false;
                         break;
                     }
@@ -147,9 +182,11 @@ class Stack {
                 
                 if (cut == true) {
                     total++;
+                    mCutStackIndex.push_back(y);
+                    /*
                     for (int z = 0; z < STACK_WIDTH; z++) {
                         mStack[y][z] = -1;
-                    }
+                    }*/
                 }
             }
             
@@ -183,12 +220,17 @@ class Stack {
                     }
                 }
             }
+
+            mJoinStack = false;
+
         }
     
         Texture mTexture;
         
         int mStack[STACK_HEIGHT][STACK_WIDTH] = {0};
         int mX = 0, mY=0;
+        std::vector<int> mCutStackIndex;
+        bool mJoinStack = false;
 };
 
 class Block {
